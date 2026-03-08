@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Wii 2026 Remote</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; background: #0a0a0a; color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; touch-action: none; overflow: hidden; }
+        #controller { width: 260px; height: 550px; background: #1a1a1a; border-radius: 50px; border: 1px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: space-around; padding: 30px 0; box-shadow: 0 30px 60px rgba(0,0,0,0.5); }
+        .trackpad { width: 140px; height: 140px; background: rgba(255,255,255,0.03); border: 1px solid #444; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; }
+        .trackpad::after { content: "SWIPE"; font-size: 10px; color: #555; letter-spacing: 2px; }
+        .btn-a { width: 130px; height: 130px; background: #222; border: 2px solid #444; border-radius: 50%; font-size: 40px; display: flex; align-items: center; justify-content: center; transition: 0.1s; }
+        .btn-a:active { background: #00ecff; color: #000; box-shadow: 0 0 30px #00ecff; transform: scale(0.95); }
+        .home-btn { width: 50px; height: 50px; border: 2px solid #444; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .home-btn div { width: 15px; height: 15px; background: #00ecff; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+        #pin-screen { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        input { background: transparent; border: none; border-bottom: 2px solid #00ecff; color: #fff; font-size: 32px; text-align: center; width: 150px; outline: none; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+<div id="pin-screen">
+    <h2 style="font-weight:100; letter-spacing:3px;">LINK SYSTEM</h2>
+    <input type="number" id="pin-input" placeholder="0000">
+    <button onclick="connect()" style="padding: 15px 40px; border-radius:30px; border:none; font-weight:bold;">CONNECT</button>
+</div>
+<div id="controller" style="visibility:hidden">
+    <div class="trackpad" id="pad"></div>
+    <div class="btn-a" id="btnA">A</div>
+    <div class="home-btn" onclick="sendHome()"><div></div></div>
+</div>
+<script>
+    let peer, conn, offP=0, offR=0, startX=0;
+    function connect() {
+        const pin = document.getElementById('pin-input').value;
+        peer = new Peer();
+        peer.on('open', () => {
+            conn = peer.connect('WII-HOST-' + pin);
+            conn.on('open', () => {
+                document.getElementById('pin-screen').style.display='none';
+                document.getElementById('controller').style.visibility='visible';
+                startMotion();
+            });
+        });
+    }
+    function startMotion() {
+        window.addEventListener('devicemotion', (e) => {
+            const g = e.accelerationIncludingGravity;
+            const p = Math.atan2(g.y, g.z) * 57.3;
+            const r = Math.atan2(-g.x, Math.sqrt(g.y*g.y + g.z*g.z)) * 57.3;
+            if(offP === 0) { offP = p; offR = r; }
+            if(conn) conn.send({ type: 'm', p: p - offP, r: r - offR });
+        });
+    }
+    document.getElementById('btnA').onmousedown = () => { if(conn) conn.send({type: 'click'}); };
+    document.getElementById('pad').ontouchstart = (e) => { startX = e.touches[0].clientX; };
+    document.getElementById('pad').ontouchmove = (e) => {
+        let dx = e.touches[0].clientX - startX;
+        if(Math.abs(dx) > 60) {
+            conn.send({type: 'swipe', dir: dx > 0 ? 'left' : 'right'});
+            startX = e.touches[0].clientX;
+            navigator.vibrate(15);
+        }
+    };
+    function sendHome() { conn.send({type: 'home'}); navigator.vibrate([30, 50, 30]); }
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; background: transparent; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        #box { width: 500px; background: rgba(255,255,255,0.9); border-radius: 40px; padding: 40px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .btn { padding: 15px 40px; border-radius: 30px; border: 2px solid #eee; background: white; font-weight: bold; margin: 10px; transition: 0.2s; }
+        .btn.hover { background: #00ecff; color: white; border-color: #00ecff; }
+        #inner-cursor { position: fixed; width: 40px; height: 50px; background: url('cursor.png') center/contain; pointer-events: none; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div id="inner-cursor"></div>
+    <div id="box">
+        <h2>WII HOME</h2>
+        <button class="btn" onclick="window.parent.location.reload()">Wii Menu</button>
+        <button class="btn" onclick="window.parent.postMessage('close_home', '*')">Close</button>
+    </div>
+<script>
+    window.addEventListener('message', e => {
+        const cur = document.getElementById('inner-cursor');
+        if(e.data.t === 'p') {
+            cur.style.left = e.data.x + 'px'; cur.style.top = e.data.y + 'px';
+            document.querySelectorAll('.btn').forEach(b => {
+                const r = b.getBoundingClientRect();
+                if(e.data.x > r.left && e.data.x < r.right && e.data.y > r.top && e.data.y < r.bottom) b.classList.add('hover');
+                else b.classList.remove('hover');
+            });
+        }
+        if(e.data.t === 'c') {
+            const h = document.querySelector('.btn.hover');
+            if(h) h.click();
+        }
+    });
+</script>
+</body>
+</html>
